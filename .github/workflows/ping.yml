@@ -11,4 +11,10 @@ jobs:
     steps:
       - name: Ping Render app
         run: |
-          curl -s -o /dev/null https://planning-poker-2kz1.onrender.com || echo "Ping failed"
+          echo "Pinging https://planning-poker-2kz1.onrender.com"
+          if curl -s --head --request GET https://planning-poker-2kz1.onrender.com | grep "200 OK" > /dev/null; then
+            echo "✅ Render app is awake!"
+          else
+            echo "❌ Ping failed!"
+            exit 1
+          fi
