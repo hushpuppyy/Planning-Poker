@@ -3,7 +3,7 @@ name: Keep Render Awake
 on:
   schedule:
     - cron: "*/10 * * * *"  # toutes les 10 minutes
-  workflow_dispatch:
+  workflow_dispatch:        # permet de le lancer à la main
 
 jobs:
   ping:
@@ -12,9 +12,6 @@ jobs:
       - name: Ping Render app
         run: |
           echo "Pinging https://planning-poker-2kz1.onrender.com"
-          if curl -s --head --request GET https://planning-poker-2kz1.onrender.com | grep "200 OK" > /dev/null; then
-            echo "✅ Render app is awake!"
-          else
-            echo "❌ Ping failed!"
-            exit 1
-          fi
+          # -L : suit les redirections
+          # || true : ne jamais faire échouer le job, même si le curl échoue
+          curl -L -s -o /dev/null https://planning-poker-2kz1.onrender.com || true
