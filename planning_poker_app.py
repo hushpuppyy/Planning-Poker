@@ -246,8 +246,7 @@ def session_lobby(session_id):
     )
 
 # --- SOCKET.IO EVENTS ---
-
-from flask import request  # assure-toi que c'est bien importé en haut
+ # assure-toi que c'est bien importé en haut
 
 @socketio.on('connect')
 def handle_connect():
@@ -468,16 +467,6 @@ def handle_open_vote(data):
     broadcast_session_state(session_id)
 
 @socketio.on('submit_vote')
-def submit_vote(data):
-    session_id = data.get('sessionId')
-    session = sessions.get(session_id)
-
-    if not session:
-        print(f"[submit_vote] Session introuvable: {session_id}")
-        emit('error', {'message': 'Session introuvable ou fermée.'})
-        return
-    # ...
-
 def handle_submit_vote(data):
     session_id = data.get('sessionId')
     user_id = data.get('userId')
@@ -485,10 +474,12 @@ def handle_submit_vote(data):
 
     session = sessions.get(session_id)
     if not session:
+        emit('error', {'message': 'Session introuvable ou fermée.'})
         return
 
     idx = session.get('current_story_index')
     if idx is None:
+        emit('error', {'message': "Aucune story sélectionnée."}, room=user_id)
         return
 
     story = session['stories'][idx]
@@ -501,7 +492,7 @@ def handle_submit_vote(data):
         emit('error', {'message': "Vous avez déjà voté pour ce tour."}, room=user_id)
         return
 
-    # validation carte
+    # Validation de la carte
     if vote not in CARD_DECK:
         try:
             parsed = float(vote)
