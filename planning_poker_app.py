@@ -289,6 +289,7 @@ def handle_disconnect():
             break
 
 
+
 @socketio.on('request_full_state')
 def handle_request_full_state(data):
     session_id = data.get('sessionId')
@@ -468,6 +469,17 @@ def handle_open_vote(data):
 
 
 @socketio.on('submit_vote')
+@socketio.on('submit_vote')
+def submit_vote(data):
+    session_id = data.get('sessionId')
+    session = sessions.get(session_id)
+
+    if not session:
+        print(f"[submit_vote] Session introuvable: {session_id}")
+        emit('error', {'message': 'Session introuvable ou fermée.'})
+        return
+    # ...
+
 def handle_submit_vote(data):
     session_id = data.get('sessionId')
     user_id = data.get('userId')
