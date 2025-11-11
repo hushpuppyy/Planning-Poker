@@ -1,0 +1,14 @@
+site_name: Planning Poker
+site_description: Application collaborative d’estimation agile
+theme:
+  name: material
+  language: fr
+  palette:
+    scheme: slate
+    primary: grey
+    accent: indigo
+nav:
+  - Accueil: index.md
+  - Architecture: architecture.md
+  - Installation: installation.md
+  - Utilisation: utilisation.md
