@@ -4,3 +4,7 @@ simplejson
 gunicorn
 gevent
 gevent-websocket
+pytest
+pytest-cov
+mkdocs
+mkdocs-material
