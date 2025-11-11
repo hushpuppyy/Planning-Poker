@@ -5,11 +5,11 @@ import time
 from copy import deepcopy
 
 from flask import Flask, render_template, request, redirect, url_for
-from flask_socketio import SocketIO, join_room, emit
+from flask_socketio import SocketIO,emit, join_room
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # --- ÉTAT EN MÉMOIRE ---
 
@@ -454,16 +454,31 @@ def handle_open_vote(data):
         return
 
     story = session['stories'][idx]
+    state = story.get('state')
+    estimate = story.get('estimate')
 
-    if story.get('state') in ['voting', 'revealed', 'validated']:
-        emit('error', {'message': "Le vote est déjà ouvert ou la story est déjà estimée."}, room=user_id)
+    # 1) Si déjà en cours de vote -> refuse
+    if state == 'voting':
+        emit('error', {'message': "Le vote est déjà ouvert pour cette story."}, room=user_id)
         return
 
+    # 2) Si la story est déjà estimée/validée -> refuse
+    if state == 'validated' or estimate is not None:
+        emit('error', {'message': "La story est déjà estimée."}, room=user_id)
+        return
+
+    # 3) Cas autorisés :
+    #    - 'selection' : premier tour
+    #    - 'revealed' sans estimate : pas de consensus, on relance un tour
     story['state'] = 'voting'
     story['estimation_rounds'] = story.get('estimation_rounds', 0) + 1
     story['votes'] = {}
 
-    session['status_message'] = f"VOTE OUVERT pour {story['id']} (Tour {story['estimation_rounds']})."
+    session['status_message'] = (
+        f"VOTE OUVERT pour {story['id']} (Tour {story['estimation_rounds']})."
+    )
+    print(f"🔁 Nouveau tour ouvert pour {story['id']} (Tour {story['estimation_rounds']})")
+
     broadcast_session_state(session_id)
 
 @socketio.on('submit_vote')
@@ -648,4 +663,5 @@ def handle_close_session(data):
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port, debug=True, use_reloader=False)
+
