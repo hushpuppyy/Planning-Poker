@@ -467,8 +467,6 @@ def handle_open_vote(data):
     session['status_message'] = f"VOTE OUVERT pour {story['id']} (Tour {story['estimation_rounds']})."
     broadcast_session_state(session_id)
 
-
-@socketio.on('submit_vote')
 @socketio.on('submit_vote')
 def submit_vote(data):
     session_id = data.get('sessionId')
