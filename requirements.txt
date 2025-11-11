@@ -1,5 +1,6 @@
-flask
-flask-socketio
+flask==3.0.0
+flask-socketio==5.3.6
 simplejson
-python-socketio
-eventlet
+gunicorn
+gevent
+gevent-websocket
