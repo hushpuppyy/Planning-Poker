@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planning Poker Agile</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Styles perso -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-slate-100">
+    <div id="app" class="min-h-screen p-4 sm:p-8"></div>
+
+    <!-- Socket.IO client -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+
+    <!-- Config envoyée par Flask vers le JS -->
+    <script>
+        window.APP_CONFIG = {
+            CARD_DECK: {{ card_deck | tojson }},
+            NUMERIC_CARDS: {{ numeric_cards | tojson }},
+            ERROR: {{ (error if (error is defined and error is not none) else None) | tojson }}
+        };
+    </script>
+
+    <!-- App frontend -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
