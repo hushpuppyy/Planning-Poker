@@ -4,6 +4,10 @@ console.log("app.js chargé ✅");
 
 const { CARD_DECK = [], NUMERIC_CARDS = [], ERROR = null } = window.APP_CONFIG || {};
 
+// Messages de chat stockés côté client (par onglet)
+const CHAT_MESSAGES = [];
+
+// Etat global
 const APP_STATE = {
     view: "home",          // 'home' | 'create' | 'join' | 'session'
     sessionId: null,
@@ -64,7 +68,7 @@ function renderHomeView() {
     return `
     <div class="max-w-xl mx-auto mt-12 bg-white p-10 rounded-xl shadow-2xl">
         <h1 class="text-6xl font-extrabold text-center text-gray-800 mb-4">
-            Planning Poker 
+            Planning Poker
         </h1>
         <p class="text-center text-gray-600 mb-8">
             Estimez vos user stories en équipe, en temps réel.
@@ -84,8 +88,8 @@ function renderHomeView() {
             <div class="mt-3">
                 <p><strong>Petit chiffre</strong> = tâche simple, rapide, bien comprise.</p>
                 <p><strong>Grand chiffre</strong> = tâche complexe, longue, incertaine.</p>
-                <p><strong>☕ Café</strong> = j'ai besoin d'une pause.</p>
-                <p><strong>?</strong> = je ne me sens pas compétent pour faire une estimation.</p>
+                <p><strong>☕</strong> = j'ai besoin d'une pause.</p>
+                <p><strong>?</strong> = je ne me sens pas compétent pour estimer.</p>
             </div>
         </div>
     </div>`;
@@ -203,9 +207,7 @@ function renderSessionView() {
             <p class="text-gray-600 mb-4">
                 Le facilitateur doit sélectionner une user story à estimer.
             </p>
-            ${isFac
-                ? `<p class="text-sm text-indigo-600">Utilisez le panneau Backlog pour choisir une story.</p>`
-                : ""}
+            ${isFac ? `<p class="text-sm text-indigo-600">Utilisez le panneau Backlog pour choisir une story.</p>` : ""}
         </div>`;
     } else {
         const stateLabel = {
@@ -243,6 +245,22 @@ function renderSessionView() {
     const participantsPanel = renderParticipantsPanel(s, current);
     const backlogPanel = isFac ? renderBacklogPanel(s) : "";
 
+    // Zone de chat commune quand pas d'unanimité
+    let chatPanel = "";
+    if (current && current.state === "revealed" && current.stats) {
+        const stats = current.stats;
+        const isUnanimous = stats.min === stats.max && stats.min != null;
+        if (!isUnanimous) {
+            chatPanel = `
+            <div class="mt-4">
+                <div class="p-3 mb-2 bg-yellow-100 border border-yellow-300 rounded-lg text-sm text-yellow-900">
+                    💬 Nous ne sommes pas d'accord. Discutons pour trouver un consensus !
+                </div>
+                ${renderChatBox()}
+            </div>`;
+        }
+    }
+
     return `
     <div class="max-w-7xl mx-auto">
         <h1 class="text-4xl font-extrabold text-center text-gray-100 mb-4">
@@ -255,6 +273,7 @@ function renderSessionView() {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2">
                 ${main}
+                ${chatPanel}
             </div>
             <div class="lg:col-span-1 space-y-6">
                 ${participantsPanel}
@@ -291,11 +310,9 @@ function renderVotingPanel(current) {
             onclick="submitVote()"
             ${hasSelected ? "" : "disabled"}
             class="w-full mt-4 p-3 rounded-lg font-bold transition-colors
-                   ${
-                       hasSelected
-                           ? "bg-gray-600 hover:bg-gray-700 text-white"
-                           : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                   }">
+                   ${hasSelected
+                       ? "bg-gray-600 hover:bg-gray-700 text-white"
+                       : "bg-gray-300 text-gray-500 cursor-not-allowed"}">
             Soumettre le vote
         </button>
     </div>`;
@@ -304,47 +321,34 @@ function renderVotingPanel(current) {
 function renderParticipantsPanel(s, current) {
     const entries = Object.entries(s.participants);
 
-    const rows = entries
-        .map(([uid, p]) => {
-            const isSelf = uid === APP_STATE.userId;
-            const isFac = uid === s.facilitator_id;
+    const rows = entries.map(([uid, p]) => {
+        const isSelf = uid === APP_STATE.userId;
+        const isFac = uid === s.facilitator_id;
 
-            let voteBadge = '<span class="text-xs text-gray-400">-</span>';
-            if (current && current.votes_info && current.votes_info[uid]) {
-                const v = current.votes_info[uid];
-                if (current.state === "voting") {
-                    voteBadge = v.has_voted
-                        ? '<span class="text-xs text-green-600">A voté</span>'
-                        : '<span class="text-xs text-gray-400">En attente</span>';
-                } else if (
-                    current.state === "revealed" ||
-                    current.state === "validated"
-                ) {
-                    voteBadge = `<span class="text-xs font-semibold text-indigo-700">${v.vote_display}</span>`;
-                }
+        let voteBadge = '<span class="text-xs text-gray-400">-</span>';
+        if (current && current.votes_info && current.votes_info[uid]) {
+            const v = current.votes_info[uid];
+            if (current.state === "voting") {
+                voteBadge = v.has_voted
+                    ? '<span class="text-xs text-green-600">A voté</span>'
+                    : '<span class="text-xs text-gray-400">En attente</span>';
+            } else if (current.state === "revealed" || current.state === "validated") {
+                voteBadge = `<span class="text-xs font-semibold text-indigo-700">${v.vote_display}</span>`;
             }
+        }
 
-            return `
+        return `
         <div class="flex items-center justify-between p-2 bg-gray-50 border rounded-md">
             <div class="flex items-center gap-2">
-                <span class="font-semibold ${
-                    isSelf ? "text-indigo-700" : "text-gray-800"
-                }">${p.name}</span>
-                ${
-                    isFac
-                        ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">Facilitateur</span>'
-                        : ""
-                }
-                ${
-                    isSelf
-                        ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Vous</span>'
-                        : ""
-                }
+                <span class="font-semibold ${isSelf ? "text-indigo-700" : "text-gray-800"}">
+                    ${p.name}
+                </span>
+                ${isFac ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">Facilitateur</span>' : ""}
+                ${isSelf ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Vous</span>' : ""}
             </div>
             <div>${voteBadge}</div>
         </div>`;
-        })
-        .join("");
+    }).join("");
 
     return `
     <div class="bg-gray-100 p-4 rounded-xl shadow-xl">
@@ -358,43 +362,35 @@ function renderParticipantsPanel(s, current) {
 }
 
 function renderBacklogPanel(s) {
-    const items = s.stories
-        .map((story, idx) => {
-            const isCurrent = idx === s.current_story_index;
-            const est = story.estimate;
+    const items = s.stories.map((story, idx) => {
+        const isCurrent = idx === s.current_story_index;
+        const est = story.estimate;
 
-            const baseClass = isCurrent
-                ? "bg-yellow-50 border-yellow-500"
-                : est != null
+        const baseClass = isCurrent
+            ? "bg-yellow-50 border-yellow-500"
+            : est != null
                 ? "bg-green-50 border-green-300"
                 : "bg-gray-50 border-gray-200";
 
-            return `
+        return `
         <div class="p-2 border ${baseClass} rounded-md flex items-center justify-between gap-2">
             <div class="flex-1">
                 <div class="text-sm font-semibold">
                     ${story.id}: ${story.title}
-                    ${
-                        est != null
-                            ? `<span class="ml-1 text-xs text-green-700">(Est. ${est})</span>`
-                            : ""
-                    }
+                    ${est != null ? `<span class="ml-1 text-xs text-green-700">(Est. ${est})</span>` : ""}
                 </div>
             </div>
             <button
                 type="button"
                 onclick="selectStory(${idx})"
                 class="px-2 py-1 text-[11px] rounded-full
-                       ${
-                           isCurrent
-                               ? "bg-gray-300 text-gray-600 cursor-default"
-                               : "bg-indigo-500 text-white hover:bg-indigo-600"
-                       }">
+                       ${isCurrent
+                           ? "bg-gray-300 text-gray-600 cursor-default"
+                           : "bg-indigo-500 text-white hover:bg-indigo-600"}">
                 ${isCurrent ? "Courante" : "Choisir"}
             </button>
         </div>`;
-        })
-        .join("");
+    }).join("");
 
     return `
     <div class="bg-gray-100 p-4 rounded-xl shadow-xl">
@@ -416,10 +412,9 @@ function renderBacklogPanel(s) {
 function renderFacilitatorActions(s, current) {
     if (!current) return "";
 
-    const allVoted =
-        current.votes_info &&
+    const allVoted = current.votes_info &&
         Object.values(current.votes_info).length > 0 &&
-        Object.values(current.votes_info).every((v) => v.has_voted);
+        Object.values(current.votes_info).every(v => v.has_voted);
 
     let buttons = "";
 
@@ -433,9 +428,7 @@ function renderFacilitatorActions(s, current) {
         buttons = `
         <button onclick="revealVotes()"
             class="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold">
-            Révéler les votes ${
-                allVoted ? "" : "(même si tout le monde n'a pas voté)"
-            }
+            Révéler les votes ${allVoted ? "" : "(même si tout le monde n'a pas voté)"}
         </button>`;
     } else if (current.state === "revealed" && current.stats) {
         const stats = current.stats;
@@ -450,10 +443,6 @@ function renderFacilitatorActions(s, current) {
             <button onclick="promptForFinalEstimate()"
                 class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold">
                 Saisir & valider l'estimation finale
-            </button>
-            <button onclick="openVote()"
-                class="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-gray-900 text-sm font-semibold">
-                Relancer un tour
             </button>`;
         }
     }
@@ -475,25 +464,17 @@ function renderResultsPanel(current) {
 
     const distributionHtml = Object.entries(stats.distribution || {})
         .filter(([, count]) => count > 0)
-        .map(
-            ([card, count]) => `
+        .map(([card, count]) => `
             <span class="inline-block bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded-full mr-2 mb-1">
                 ${card}: ${count}
-            </span>`
-        )
+            </span>`)
         .join("");
 
     return `
     <div class="mt-6">
-        <h3 class="text-lg font-bold text-center ${
-            isUnanimous ? "text-green-600" : "text-red-600"
-        } mb-4">
+        <h3 class="text-lg font-bold text-center ${isUnanimous ? "text-green-600" : "text-red-600"} mb-4">
             Résultats révélés —
-            ${
-                isUnanimous
-                    ? "Unanimité atteinte 🎉"
-                    : "Pas d'unanimité, discutez ou relancez."
-            }
+            ${isUnanimous ? "Unanimité atteinte 🎉" : "Pas d'unanimité, discutez ensemble."}
         </h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center mb-4">
             <div class="p-2 bg-gray-50 rounded border">
@@ -515,12 +496,60 @@ function renderResultsPanel(current) {
         </div>
         <div class="p-3 bg-gray-50 rounded border text-left">
             <h4 class="text-xs font-semibold text-gray-600 mb-1">Distribution des votes</h4>
-            <div>${
-                distributionHtml ||
-                '<span class="text-xs text-gray-400">Aucun vote.</span>'
-            }</div>
+            <div>${distributionHtml || '<span class="text-xs text-gray-400">Aucun vote.</span>'}</div>
         </div>
     </div>`;
+}
+
+function renderChatBox() {
+    const messagesHtml = CHAT_MESSAGES.map(m => `
+        <div class="p-2 bg-white rounded border mb-1">
+            <strong class="text-gray-800">${m.user}</strong>
+            <span class="text-xs text-gray-400 ml-2">${m.timestamp}</span>
+            <p class="text-sm text-gray-700">${m.message}</p>
+        </div>
+    `).join("");
+
+    return `
+    <div class="mt-3 p-3 bg-gray-100 rounded-lg">
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">💬 Discussion en direct</h4>
+        <div id="chatBox" class="max-h-40 overflow-y-auto mb-2">
+            ${messagesHtml || "<p class='text-xs text-gray-400'>Aucun message pour le moment.</p>"}
+        </div>
+        <div class="flex gap-2">
+            <input id="chatInput" type="text" placeholder="Écrivez un message..."
+                class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+            <button onclick="sendChatMessage()"
+                class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">
+                Envoyer
+            </button>
+        </div>
+    </div>`;
+}
+
+
+/* ==============================
+   CHAT : utilitaires
+   ============================== */
+
+function addChatMessage(data) {
+    CHAT_MESSAGES.push(data);
+    renderApp();
+}
+
+function sendChatMessage() {
+    const input = document.getElementById("chatInput");
+    if (!input) return;
+    const message = input.value.trim();
+    if (!message || !socket) return;
+
+    socket.emit("send_message", {
+        sessionId: APP_STATE.sessionId,
+        userId: APP_STATE.userId,
+        message,
+    });
+
+    input.value = "";
 }
 
 /* ==============================
@@ -529,8 +558,7 @@ function renderResultsPanel(current) {
 
 function setView(view, opts = {}) {
     APP_STATE.view = view;
-    APP_STATE.error =
-        opts.error !== undefined ? opts.error : null;
+    APP_STATE.error = opts.error !== undefined ? opts.error : null;
     renderApp();
 }
 
@@ -567,9 +595,8 @@ function initSocket() {
         APP_STATE.view = "session";
         APP_STATE.error = null;
 
-    renderApp(); // important pour afficher la vue session
-});
-
+        renderApp();
+    });
 
     socket.on("session_joined", (data) => {
         APP_STATE.sessionId = data.sessionId;
@@ -587,8 +614,7 @@ function initSocket() {
 
     socket.on("join_error", (data) => {
         setView("join", {
-            error:
-                data.message || "Impossible de rejoindre la session.",
+            error: data.message || "Impossible de rejoindre la session.",
         });
     });
 
@@ -604,20 +630,12 @@ function initSocket() {
     });
 
     socket.on("session_closed", (data) => {
-        const exportJson = JSON.stringify(
-            data.exportData || {},
-            null,
-            2
-        );
-        const blob = new Blob([exportJson], {
-            type: "application/json",
-        });
+        const exportJson = JSON.stringify(data.exportData || {}, null, 2);
+        const blob = new Blob([exportJson], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `planning_poker_export_${
-            APP_STATE.sessionId || "session"
-        }.json`;
+        a.download = `planning_poker_export_${APP_STATE.sessionId || "session"}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -635,31 +653,29 @@ function initSocket() {
         renderApp();
     });
 
+    socket.on("new_message", (data) => {
+        console.log("📨 new_message reçu", data);
+        addChatMessage(data);
+    });
+
     socket.on("error", (data) => {
-        APP_STATE.error =
-            data && data.message
-                ? data.message
-                : "Erreur Socket.IO";
+        APP_STATE.error = data && data.message ? data.message : "Erreur Socket.IO";
         renderApp();
     });
 }
+
 
 /* ==============================
    ACTIONS UTILISATEUR
    ============================== */
 
 function createSession(event) {
-    event.preventDefault(); // évite le rechargement de la page
-
-    if (!socket) {
-        initSocket();
-    }
+    event.preventDefault();
+    if (!socket) initSocket();
 
     const sessionName = document.getElementById("sessionName").value.trim();
     const facilitatorName = document.getElementById("facilitatorName").value.trim();
     const gameMode = document.getElementById("gameMode").value;
-
-    console.log("createSession()", { sessionName, facilitatorName, gameMode });
 
     socket.emit("create_session", {
         sessionName,
@@ -669,22 +685,18 @@ function createSession(event) {
     });
 }
 
-
 function joinSession(event) {
     event.preventDefault();
     if (!socket) initSocket();
 
-    const sessionId =
-        document.getElementById("joinSessionId").value.trim();
-    const userName =
-        document.getElementById("joinUserName").value.trim();
+    const sessionId = document.getElementById("joinSessionId").value.trim();
+    const userName = document.getElementById("joinUserName").value.trim();
 
     socket.emit("join_session", { sessionId, userName });
 }
 
 function selectStory(storyIndex) {
-    if (!socket || !APP_STATE.sessionId || !APP_STATE.userId)
-        return;
+    if (!socket || !APP_STATE.sessionId || !APP_STATE.userId) return;
     socket.emit("select_story", {
         sessionId: APP_STATE.sessionId,
         userId: APP_STATE.userId,
@@ -693,8 +705,7 @@ function selectStory(storyIndex) {
 }
 
 function openVote() {
-    if (!socket || !APP_STATE.sessionId || !APP_STATE.userId)
-        return;
+    if (!socket || !APP_STATE.sessionId || !APP_STATE.userId) return;
     socket.emit("open_vote", {
         sessionId: APP_STATE.sessionId,
         userId: APP_STATE.userId,
@@ -703,14 +714,8 @@ function openVote() {
 
 function handleCardSelection(value) {
     const s = APP_STATE.session;
-    if (
-        !s ||
-        !s.current_story ||
-        s.current_story.state !== "voting"
-    )
-        return;
-    APP_STATE.selectedCard =
-        APP_STATE.selectedCard === value ? null : value;
+    if (!s || !s.current_story || s.current_story.state !== "voting") return;
+    APP_STATE.selectedCard = APP_STATE.selectedCard === value ? null : value;
     renderApp();
 }
 
@@ -748,8 +753,7 @@ function promptForFinalEstimate() {
     if (!s || !s.current_story || !s.current_story.stats) return;
 
     const stats = s.current_story.stats;
-    const suggestion =
-        stats.mean || stats.median || stats.min || "";
+    const suggestion = stats.mean || stats.median || stats.min || "";
 
     const input = window.prompt(
         `Saisir l'estimation finale.\nSuggestions: moyenne=${stats.mean}, médiane=${stats.median}`,
@@ -761,20 +765,13 @@ function promptForFinalEstimate() {
     if (!Number.isNaN(num) && NUMERIC_CARDS.includes(num)) {
         validateStory(num);
     } else {
-        alert(
-            "Valeur invalide. Utilisez une carte numérique du deck."
-        );
+        alert("Valeur invalide. Utilisez une carte numérique du deck.");
     }
 }
 
 function handleCloseSession() {
     if (!socket) return;
-    if (
-        !confirm(
-            "Clôturer la session pour tous les participants ?"
-        )
-    )
-        return;
+    if (!confirm("Clôturer la session pour tous les participants ?")) return;
 
     socket.emit("close_session", {
         sessionId: APP_STATE.sessionId,
@@ -782,7 +779,7 @@ function handleCloseSession() {
     });
 }
 
-/* Expose les fonctions utilisées par les onclick HTML */
+/* Expose pour les onclick HTML */
 window.setView = setView;
 window.createSession = createSession;
 window.joinSession = joinSession;
@@ -794,6 +791,7 @@ window.revealVotes = revealVotes;
 window.validateStory = validateStory;
 window.promptForFinalEstimate = promptForFinalEstimate;
 window.handleCloseSession = handleCloseSession;
+window.sendChatMessage = sendChatMessage;
 
 /* ==============================
    INIT

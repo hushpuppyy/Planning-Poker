@@ -657,6 +657,32 @@ def handle_close_session(data):
     socketio.emit('session_closed', {'exportData': export_data}, room=session_id)
     print(f"Session {session_id} clôturée.")
 
+# === CHAT TEMPS RÉEL ===
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    """Réception d'un message depuis le client"""
+    session_id = data.get('sessionId')
+    user_id = data.get('userId')
+    message = data.get('message')
+
+    if not session_id or not user_id or not message:
+        return
+
+    session = sessions.get(session_id)
+    if not session or user_id not in session['participants']:
+        return
+
+    user_name = session['participants'][user_id]['name']
+    msg_obj = {
+        'user': user_name,
+        'message': message,
+        'timestamp': time.strftime('%H:%M:%S')
+    }
+
+    # Diffuser le message à tous les membres de la session
+    socketio.emit('new_message', msg_obj, room=session_id)
+
 
 # --- MAIN ---
 
