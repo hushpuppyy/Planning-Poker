@@ -5,7 +5,9 @@ import time
 from copy import deepcopy
 
 from flask import Flask, render_template, request, redirect, url_for
-from flask_socketio import SocketIO,emit, join_room
+from flask_socketio import SocketIO, emit, join_room
+from datetime import datetime
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
@@ -659,29 +661,31 @@ def handle_close_session(data):
 
 # === CHAT TEMPS RÉEL ===
 
-@socketio.on('send_message')
+@socketio.on("send_message")
 def handle_send_message(data):
-    """Réception d'un message depuis le client"""
-    session_id = data.get('sessionId')
-    user_id = data.get('userId')
-    message = data.get('message')
-
+    session_id = data.get("sessionId")
+    user_id = data.get("userId")
+    message = data.get("message", "").strip()
     if not session_id or not user_id or not message:
         return
 
+    # Récupérer le nom d'utilisateur
     session = sessions.get(session_id)
-    if not session or user_id not in session['participants']:
+    if not session:
         return
 
-    user_name = session['participants'][user_id]['name']
-    msg_obj = {
-        'user': user_name,
-        'message': message,
-        'timestamp': time.strftime('%H:%M:%S')
+    user = session["participants"].get(user_id)
+    user_name = user["name"] if user else "Anonyme"
+
+    # Créer l'objet message
+    msg_data = {
+        "user": user_name,
+        "message": message,
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
     }
 
-    # Diffuser le message à tous les membres de la session
-    socketio.emit('new_message', msg_obj, room=session_id)
+    # ✅ Diffuser le message à TOUTE la session
+    emit("new_message", msg_data, room=session_id)
 
 
 # --- MAIN ---
