@@ -20,6 +20,36 @@ const APP_STATE = {
 
 let socket = null;
 
+// en haut du fichier, près des globals
+let lastConfettiKey = null;
+
+function maybeFireConfetti(sessionData) {
+  if (!window.confetti) return; // lib pas chargée
+  const s = sessionData;
+  const cur = s.current_story;
+  if (!cur || !cur.stats) return;
+
+  const unanimous = cur.stats.min === cur.stats.max && cur.stats.min != null;
+  const key = `${s.id}-${cur.id}-r${cur.round || 0}-state:${cur.state}`;
+
+  // tirer lors de l’unanimité à l’étape "revealed" ou quand c’est "validated"
+  if ((cur.state === "revealed" && unanimous) || cur.state === "validated") {
+    if (lastConfettiKey === key) return; // éviter le spam
+    lastConfettiKey = key;
+
+    // petit feu d’artifice 
+    const count = 180;
+    const defaults = { spread: 70, startVelocity: 35, gravity: 0.9 };
+    function burst(x) {
+      confetti({ ...defaults, particleCount: Math.floor(count / 3), origin: { x, y: 0.4 } });
+    }
+    burst(0.2); burst(0.5); burst(0.8);
+    setTimeout(() => burst(0.35), 200);
+    setTimeout(() => burst(0.65), 350);
+  }
+}
+
+
 /* ==============================
    RENDER PRINCIPAL
    ============================== */
@@ -627,6 +657,7 @@ function initSocket() {
             APP_STATE.view = "session";
         }
         renderApp();
+        maybeFireConfetti(sessionData);
     });
 
     socket.on("session_closed", (data) => {
