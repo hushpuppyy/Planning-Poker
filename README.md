@@ -15,11 +15,17 @@ Joueurs : entrent le code et rejoignent la session.
 
 Déroulement :
     Le facilitateur choisit une story.
+    
     Discussion éventuelle.
+    
     Le facilitateur ouvre le vote.
+    
     Les joueurs votent.
+    
     Le facilitateur révèle les votes.
+    
     En cas de désaccord → discussion puis estimation finale.
+    
     Le facilitateur valide la story, on passe à la suivante.
     
 Fin :
