@@ -10,7 +10,9 @@ Comment Jouer
 lien : 
 
 Facilitateur : crée une session, choisit le mode, obtient un code à donner aux joueurs.
+
 Joueurs : entrent le code et rejoignent la session.
+
 Déroulement :
     Le facilitateur choisit une story.
     Discussion éventuelle.
@@ -19,6 +21,7 @@ Déroulement :
     Le facilitateur révèle les votes.
     En cas de désaccord → discussion puis estimation finale.
     Le facilitateur valide la story, on passe à la suivante.
+    
 Fin :
 La session peut être clôturée et exportée en JSON.
 Reconnexion automatique en cas de coupure.
