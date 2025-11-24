@@ -8,6 +8,7 @@ Chaque joueur choisit une carte représentant son estimation, puis les votes son
 Comment Jouer 
 
 lien : 
+
 Facilitateur : crée une session, choisit le mode, obtient un code à donner aux joueurs.
 Joueurs : entrent le code et rejoignent la session.
 Déroulement :
