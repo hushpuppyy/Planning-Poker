@@ -3,6 +3,7 @@ import uuid
 import random
 import time
 import os
+import sys
 from copy import deepcopy
 
 from flask import Flask, render_template, request, redirect, url_for
@@ -12,8 +13,11 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
-
+try:
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+except ValueError:
+    # Fallback pour les environnements qui ne supportent pas eventlet (ex: Python 3.13 en local)
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 # --- ÉTAT EN MÉMOIRE ---
 
 sessions = {}
