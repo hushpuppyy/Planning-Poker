@@ -2,6 +2,7 @@ import json
 import uuid
 import random
 import time
+import os
 from copy import deepcopy
 
 from flask import Flask, render_template, request, redirect, url_for
@@ -11,7 +12,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # --- ÉTAT EN MÉMOIRE ---
 
@@ -690,8 +691,8 @@ def handle_send_message(data):
 
 # --- MAIN ---
 
-if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=True, use_reloader=False)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port)
+
 
