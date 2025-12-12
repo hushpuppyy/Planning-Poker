@@ -1,0 +1,16 @@
+# Environnements virtuels
+.venv/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Pytest
+.pytest_cache/
+
+# MkDocs / documentation générée
+site/
+
+# Cache divers
+.DS_Store
+Thumbs.db
