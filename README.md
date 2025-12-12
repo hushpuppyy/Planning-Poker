@@ -1,14 +1,17 @@
 # Planning-Poker
 Projet planning poker de IMANSOUREN Selma et LYONNET Andrea 
 
-Objectif du Jeu
+## Objectif du Jeu
 
 Le Planning Poker est un outil d’estimation agile utilisé en équipe pour évaluer la complexité des user stories.
 Chaque joueur choisit une carte représentant son estimation, puis les votes sont révélés simultanément.
 
-Comment Jouer 
+## Comment jouer
 
-lien : 
+Pour tester le jeu : lancer le serveur python planning_poker_app.py puis ouvrir dans le navigateur : http://127.0.0.1:5000/
+
+Pour jouer a plusieur avec different membre du groupes qui ne sont pas sur le meme reseau local  : https://web-production-8451.up.railway.app/
+
 Facilitateur : crée une session, choisit le mode, obtient un code à donner aux joueurs.
 Joueurs : entrent le code et rejoignent la session.
 Déroulement :
