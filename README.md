@@ -42,3 +42,8 @@ Le facilitateur peut valider l’estimation finale
 Gestion complète des stories, du backlog et des participants
 
 Interface dynamique via WebSockets (Socket.IO)
+
+## Démonstration
+Une vidéo de démonstration de l’application est disponible dans le dépôt :
+**Demo_PlanningPoker.mp4** (stockée via Git LFS).
+
